@@ -1,4 +1,5 @@
-﻿using SharpGL;
+﻿using CG;
+using SharpGL;
 using SharpGL.WPF;
 using System.Diagnostics;
 using System.Numerics;
@@ -81,6 +82,12 @@ namespace CG3D
                         Mouse.Capture(null);
                     e.Handled = true;
                     break;
+                case MouseButton.Left:
+                    handler.CameraCapture(false);
+                    if (Mouse.Captured == OpenGLControl)
+                        Mouse.Capture(null);
+                    e.Handled = true;
+                    break;
             }
         }
         private void OpenGLControl_MouseDown(object sender, MouseButtonEventArgs e)
@@ -89,6 +96,12 @@ namespace CG3D
             switch (e.ChangedButton)
             {
                 case MouseButton.Middle:
+                    handler.CameraCapture(true);
+                    OpenGLControl.Focus();
+                    Mouse.Capture(OpenGLControl, CaptureMode.Element);
+                    e.Handled = true;
+                    break;
+                case MouseButton.Left:
                     handler.CameraCapture(true);
                     OpenGLControl.Focus();
                     Mouse.Capture(OpenGLControl, CaptureMode.Element);
@@ -107,6 +120,72 @@ namespace CG3D
             handler.Update(deltaTime, mousePosition);
         }
 
+        private void ToggleGlobalLight(object sender, RoutedEventArgs e)
+        {
+            handler.ToggleGlobalLight();
+        }
+        private void TogglePointLight(object sender, RoutedEventArgs e)
+        {
+            handler.TogglePointlLight();
+        }
+        private void ToggleWireframe(object sender, RoutedEventArgs e)
+        {
+            handler.ToggleWireframe();
+        }
+        private void ToggleNormals(object sender, RoutedEventArgs e)
+        {
+            handler.ToggleNormals();
+        }
+        private void ChangeRGBAObject(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem item)
+                return;
 
+            var dialog = new RgbaColorWindow
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                Vector4 color = dialog.SelectedColor;
+                int i = int.Parse(item.Tag.ToString());
+                handler.AddToColorQueue(new RGBAi(color,i,COLOROF.OBJECT));
+            }
+        }
+        private void ChangeRGBASource(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem item)
+                return;
+
+            var dialog = new RgbaColorWindow
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                Vector4 color = dialog.SelectedColor;
+                int i = int.Parse(item.Tag.ToString());
+                handler.AddToColorQueue(new RGBAi(color, i, COLOROF.SOURCE));
+            }
+        }
+        private void ChangeRGBAPoint(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem item)
+                return;
+
+            var dialog = new RgbaColorWindow
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                Vector4 color = dialog.SelectedColor;
+                int i = int.Parse(item.Tag.ToString());
+                handler.AddToColorQueue(new RGBAi(color, i, COLOROF.POINT));
+            }
+        }
     }
 }

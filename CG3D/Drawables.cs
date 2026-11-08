@@ -51,17 +51,18 @@ namespace CG3D
         public Vector3 Offset { get; }
         public Vector3 Normal { get; }
         public float RotationAroundNormal { get; }
-
+        public float Scale { get; }
         public PolyhedronInstance(
             Vector3 offset,
             Vector3 normal,
-            float rotationAroundNormal = 0f)
+            float rotationAroundNormal = 0f,
+            float scale = 1f)
         {
             if (normal.LengthSquared() < 1e-12f)
                 throw new ArgumentException(
                     "Нормаль не может быть нулевым вектором.",
                     nameof(normal));
-
+            Scale = scale;
             Offset = offset;
             Normal = Vector3.Normalize(normal);
             RotationAroundNormal = rotationAroundNormal;
@@ -84,21 +85,61 @@ namespace CG3D
     }
 
 
+    class Material
+    {
+        public Vector4 Ambient { get; set; }
+        public Vector4 Diffuse { get; set; }
+        public Vector4 Specular { get; set; }
 
+        public float Shininess { get; }
+
+        public Material(
+            Vector4 ambient,
+            Vector4 diffuse,
+            Vector4 specular,
+            float shininess = 32f)
+        {
+            Ambient = ambient;
+            Diffuse = diffuse;
+            Specular = specular;
+            Shininess = shininess;
+        }
+    }
     class PolyhedronModel
     {
         public Polyhedron Polygon { get; }
         public Extrusion Extrusion { get; }
+        public Material Material { get; }
 
         public PolyhedronModel(
             Polyhedron polygon,
-            Extrusion extrusion)
+            Extrusion extrusion,
+            Material material)
         {
             ArgumentNullException.ThrowIfNull(polygon);
             ArgumentNullException.ThrowIfNull(extrusion);
+            ArgumentNullException.ThrowIfNull(material);
 
             Polygon = polygon;
             Extrusion = extrusion;
+            Material = material;
+        }
+        public void ChangeMaterial(Vector4 color,int i) 
+        {
+            switch (i) 
+            {
+                case 0:
+                    Material.Ambient = color;
+                    break;
+                case 1:
+                    Material.Diffuse = color;
+                    break;
+                case 2:
+                    Material.Specular = color;
+                    break;
+            
+            }
+            
         }
 
         public Vector3 GetWorldVertex(
@@ -111,8 +152,8 @@ namespace CG3D
             Vector2 vertex = Polygon.Vertices[vertexIndex];
 
             Vector3 localVertex = new(
-                vertex.X - Polygon.Center.X,
-                vertex.Y - Polygon.Center.Y,
+                (vertex.X - Polygon.Center.X) * instance.Scale,
+                (vertex.Y - Polygon.Center.Y) * instance.Scale,
                 0f);
 
             Quaternion rotationAroundNormal =

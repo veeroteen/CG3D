@@ -25,6 +25,67 @@
             DrawFPS="True"
             Resized="OpenGLControl_Resized"
             MouseDown="OpenGLControl_MouseDown"
-            MouseUp="OpenGLControl_MouseUp"/>
+            MouseUp="OpenGLControl_MouseUp">
+            
+            <sharpGL:OpenGLControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Переключить освещение">
+                        <MenuItem Header="Глобальное"
+                        Click="ToggleGlobalLight"/>
+
+                        <MenuItem Header="Точечное"
+                        Click="TogglePointLight"/>
+                    </MenuItem>
+                    
+                    <MenuItem Header="Изменить свойства материала объекта">
+                        <MenuItem 
+                            Header="Ambient"
+                            Tag="0"
+                            Click="ChangeRGBAObject"/>
+                        <MenuItem 
+                            Header="Diffuse"
+                            Tag="1"
+                            Click="ChangeRGBAObject"/>
+                        <MenuItem 
+                            Header="Specular"
+                            Tag="2"
+                            Click="ChangeRGBAObject"/>
+                    </MenuItem>
+                    
+                    <MenuItem Header="Изменить свойства глобального источника света">
+                        <MenuItem 
+                            Header="Ambient"
+                            Tag="0"
+                            Click="ChangeRGBASource"/>
+                        <MenuItem 
+                            Header="Diffuse"
+                            Tag="1"
+                            Click="ChangeRGBASource"/>
+                        <MenuItem 
+                            Header="Specular"
+                            Tag="2"
+                            Click="ChangeRGBASource"/>
+                    </MenuItem>
+                    <MenuItem Header="Изменить свойства точечного источника света">
+                        <MenuItem 
+                            Header="Ambient"
+                            Tag="0"
+                            Click="ChangeRGBAPoint"/>
+                        <MenuItem 
+                            Header="Diffuse"
+                            Tag="1"
+                            Click="ChangeRGBAPoint"/>
+                        <MenuItem 
+                            Header="Specular"
+                            Tag="2"
+                            Click="ChangeRGBAPoint"/>
+                    </MenuItem>
+                    <MenuItem Header="Режим каркаса"
+                        Click="ToggleWireframe"/>
+                    <MenuItem Header="Отрисовка нормалей"
+                        Click="ToggleNormals"/>
+                </ContextMenu>
+            </sharpGL:OpenGLControl.ContextMenu>
+        </sharpGL:OpenGLControl>
     </Grid>
 </Window>
