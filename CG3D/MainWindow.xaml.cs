@@ -52,8 +52,14 @@ namespace CG3D
         private void Window_KeyDown(
             object sender, KeyEventArgs e)
         {
-            handler.AddKey(e.Key);
-            
+            if (e.Key == Key.P)
+            {
+                handler.ToggleProjection((int)OpenGLControl.ActualWidth, (int)OpenGLControl.ActualHeight);
+            }
+            else
+            {
+                handler.AddKey(e.Key);
+            }
         }
 
         private void Window_KeyUp(

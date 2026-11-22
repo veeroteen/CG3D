@@ -44,8 +44,9 @@ namespace CG3D
         private bool pointL = false;
         private bool showWireframe = false;
         private bool showNormals = false;
-
+        private bool projection = false;
         private Queue<RGBAi> colorqueue;
+        private bool smoothing = true;
         public Handler(OpenGLControl glControl) 
         {
             camera = new Camera();
@@ -68,20 +69,72 @@ namespace CG3D
         {
             colorqueue.Enqueue(rGBAi);
         }
-        public void Resized(int width , int height)
+        public void ToggleProjection(int width, int height) 
+        {
+            projection = !projection;
+            if (projection) 
+            {
+                gl.MatrixMode(OpenGL.GL_PROJECTION);
+                gl.LoadIdentity();
+
+                float aspectRatio = (float)width / height;
+                float viewSize = 10f;
+
+                gl.Ortho(
+                    -viewSize * aspectRatio,
+                     viewSize * aspectRatio,
+                    -viewSize,
+                     viewSize,
+                     -100f,
+                     100f);
+            }
+            else 
+            {
+                gl.MatrixMode(OpenGL.GL_PROJECTION);
+                gl.LoadIdentity();
+
+                gl.Perspective(
+                    45.0,
+                    (double)width / height,
+                    0.1,
+                    1000.0);
+
+                gl.MatrixMode(OpenGL.GL_MODELVIEW);
+            }
+        
+        }
+        public void Resized(int width, int height)
         {
             gl.Viewport(0, 0, width, height);
+            if (projection)
+            {
+                gl.MatrixMode(OpenGL.GL_PROJECTION);
+                gl.LoadIdentity();
 
-            gl.MatrixMode(OpenGL.GL_PROJECTION);
-            gl.LoadIdentity();
+                float aspectRatio = (float)width / height;
+                float viewSize = 10f;
 
-            gl.Perspective(
-                45.0,
-                (double)width / height,
-                0.1,
-                1000.0);
+                gl.Ortho(
+                    -viewSize * aspectRatio,
+                     viewSize * aspectRatio,
+                    -viewSize,
+                     viewSize,
+                     -100f,
+                     100f);
+            }
+            else 
+            {
+                gl.MatrixMode(OpenGL.GL_PROJECTION);
+                gl.LoadIdentity();
 
-            gl.MatrixMode(OpenGL.GL_MODELVIEW);
+                gl.Perspective(
+                    45.0,
+                    (double)width / height,
+                    0.1,
+                    1000.0);
+
+                gl.MatrixMode(OpenGL.GL_MODELVIEW);
+            }
         }
 
         public void AddKey(Key key) 
@@ -102,7 +155,10 @@ namespace CG3D
             {
                 camera.SpeedMultiplyer = 1;
             }
-            pressedKeys.Remove(key);
+            if (pressedKeys.Contains(key))
+            {
+                pressedKeys.Remove(key);
+            }
         }
 
         public void Deactovate() 
@@ -274,7 +330,20 @@ namespace CG3D
         {
             showWireframe = !showWireframe;
         }
+        public void ToggleSmoothing() 
+        {
+            smoothing = !smoothing;
 
+            if (smoothing) 
+            {
+                gl.ShadeModel(OpenGL.GL_SMOOTH);
+            }
+            else
+            {
+                gl.ShadeModel(OpenGL.GL_FLAT);
+            }
+            
+        }
         public void ToggleNormals()
         {
             showNormals = !showNormals;
@@ -347,9 +416,9 @@ namespace CG3D
         {
             float velocity = camera.CameraSpeed * deltaTime;
 
-            foreach (var key in pressedKeys) 
+            for (int i = 0; i < pressedKeys.Count;i++)
             {
-                switch (key)
+                switch (pressedKeys[i])
                 {
                     case Key.W:
                         camera.ChangePosition(camera.cameraFront * velocity);
@@ -369,6 +438,11 @@ namespace CG3D
                         break;
                     case Key.Space:
                         camera.ChangePosition( camera.cameraUp * velocity);
+                        break;
+                    case Key.H:
+                        ToggleSmoothing();
+                        RemoveKey(Key.H);
+                        i--;
                         break;
 
                 }
@@ -419,13 +493,35 @@ namespace CG3D
                         Vector3.Cross(v1 - v0, v3 - v0));
 
                     gl.Begin(OpenGL.GL_QUADS);
+                    if (smoothing)
+                    {
+                        Vector3 n0 = GetVertexNormal(model, i, j);
+                        Vector3 n1 = GetVertexNormal(model, i, nextVertex);
+                        Vector3 n2 = GetVertexNormal(model, i + 1, nextVertex);
+                        Vector3 n3 = GetVertexNormal(model, i + 1, j);
 
-                    gl.Normal(normal.X, normal.Y, normal.Z);
+                        gl.Normal(n0.X, n0.Y, n0.Z);
+                        gl.Vertex(v0.X, v0.Y, v0.Z);
 
-                    gl.Vertex(v0.X, v0.Y, v0.Z);
-                    gl.Vertex(v1.X, v1.Y, v1.Z);
-                    gl.Vertex(v2.X, v2.Y, v2.Z);
-                    gl.Vertex(v3.X, v3.Y, v3.Z);
+                        gl.Normal(n1.X, n1.Y, n1.Z);
+                        gl.Vertex(v1.X, v1.Y, v1.Z);
+
+                        gl.Normal(n2.X, n2.Y, n2.Z);
+                        gl.Vertex(v2.X, v2.Y, v2.Z);
+
+                        gl.Normal(n3.X, n3.Y, n3.Z);
+                        gl.Vertex(v3.X, v3.Y, v3.Z);
+                    }
+                    else
+                    {
+                        gl.Normal(normal.X, normal.Y, normal.Z);
+
+                        gl.Vertex(v0.X, v0.Y, v0.Z);
+                        gl.Vertex(v1.X, v1.Y, v1.Z);
+                        gl.Vertex(v2.X, v2.Y, v2.Z);
+                        gl.Vertex(v3.X, v3.Y, v3.Z);
+                    }
+
 
                     gl.End();
                 }
@@ -650,6 +746,12 @@ namespace CG3D
             int segments = 100,
             float height = -10f)
         {
+            Material gray = new(
+            new Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+            new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
+            new Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+            64f);
+            ApplyMaterial(gray);
             if (segments < 1 || size <= 0)
                 return;
 
@@ -685,5 +787,53 @@ namespace CG3D
 
             gl.End();
         }
+        private Vector3 GetVertexNormal(
+        PolyhedronModel model,
+        int instanceIndex,
+        int vertexIndex)
+        {
+            ReadOnlySpan<PolyhedronInstance> instances =
+                model.Extrusion.Instances;
+
+            ReadOnlySpan<Vector2> vertices =
+                model.Polygon.Vertices;
+
+            int instanceCount = instances.Length;
+            int vertexCount = vertices.Length;
+
+            Vector3 normal = Vector3.Zero;
+
+            // Соседняя боковая грань слева от вершины.
+            if (instanceIndex > 0)
+            {
+                int previousVertex = (vertexIndex - 1 + vertexCount) % vertexCount;
+
+                Vector3 v0 = model.GetWorldVertex(instanceIndex - 1, previousVertex);
+                Vector3 v1 = model.GetWorldVertex(instanceIndex - 1, vertexIndex);
+                Vector3 v3 = model.GetWorldVertex(instanceIndex, previousVertex);
+
+                normal += Vector3.Normalize(
+                    Vector3.Cross(v1 - v0, v3 - v0));
+            }
+
+            // Соседняя боковая грань справа от вершины.
+            if (instanceIndex < instanceCount - 1)
+            {
+                int nextVertex = (vertexIndex + 1) % vertexCount;
+
+                Vector3 v0 = model.GetWorldVertex(instanceIndex, vertexIndex);
+                Vector3 v1 = model.GetWorldVertex(instanceIndex, nextVertex);
+                Vector3 v3 = model.GetWorldVertex(instanceIndex + 1, vertexIndex);
+
+                normal += Vector3.Normalize(
+                    Vector3.Cross(v1 - v0, v3 - v0));
+            }
+
+            if (normal.LengthSquared() < 1e-8f)
+                return Vector3.UnitY;
+
+            return Vector3.Normalize(normal);
+        }
+
     }
 }
