@@ -193,5 +193,15 @@ namespace CG3D
                 handler.AddToColorQueue(new RGBAi(color, i, COLOROF.POINT));
             }
         }
+
+        private void ToggleLigting(object sender, RoutedEventArgs e)
+        {
+            handler.ToggleSmoothing();
+        }
+
+        private void TogglePerspective(object sender, RoutedEventArgs e)
+        {
+            handler.ToggleProjection((int)OpenGLControl.ActualWidth, (int)OpenGLControl.ActualHeight);
+        }
     }
 }
