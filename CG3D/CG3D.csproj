@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <PackageReference Include="SharpGL.WPF" Version="3.1.1" />
+    <Content Include="texture.jpg">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

@@ -84,6 +84,8 @@
                         Click="ToggleWireframe"/>
                     <MenuItem Header="Отрисовка нормалей"
                         Click="ToggleNormals"/>
+                    <MenuItem Header="Наложение текстуры"
+                        Click="ToggleTexture"/>
                 </ContextMenu>
             </sharpGL:OpenGLControl.ContextMenu>
         </sharpGL:OpenGLControl>

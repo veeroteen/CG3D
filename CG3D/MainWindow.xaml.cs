@@ -130,6 +130,10 @@ namespace CG3D
         {
             handler.ToggleGlobalLight();
         }
+        private void ToggleTexture(object sender, RoutedEventArgs e)
+        {
+            handler.ToggleTexture();
+        }
         private void TogglePointLight(object sender, RoutedEventArgs e)
         {
             handler.TogglePointlLight();

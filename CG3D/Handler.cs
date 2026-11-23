@@ -1,4 +1,5 @@
 ﻿using SharpGL;
+using SharpGL.SceneGraph.Assets;
 using SharpGL.WPF;
 using System;
 using System.Collections.Generic;
@@ -47,6 +48,7 @@ namespace CG3D
         private bool projection = false;
         private Queue<RGBAi> colorqueue;
         private bool smoothing = true;
+        private Texture texture;
         public Handler(OpenGLControl glControl) 
         {
             camera = new Camera();
@@ -58,7 +60,8 @@ namespace CG3D
             gl.Enable(OpenGL.GL_DEPTH_TEST);
             gl.DepthFunc(OpenGL.GL_LEQUAL);
             gl.ShadeModel(OpenGL.GL_SMOOTH);
-
+            texture = new Texture();
+            texture.Create(gl, new System.Drawing.Bitmap("texture.jpg"));
             Test();
             GlobalLight();
             PointLight();
@@ -313,6 +316,12 @@ namespace CG3D
 
         }
 
+        private bool useTexture = false;
+
+        public void ToggleTexture()
+        {
+            useTexture = !useTexture;
+        }
         public void ToggleGlobalLight() 
         {
             if (globalL) 
@@ -451,8 +460,16 @@ namespace CG3D
             }
 
         }
-
         private void DrawPolyhedronModel(PolyhedronModel model)
+        {
+            if (useTexture)
+                DrawTexturedModel(model);
+            else
+                DrawSolidModel(model);
+        }
+
+
+        private void DrawSolidModel(PolyhedronModel model)
         {
             ReadOnlySpan<PolyhedronInstance> instances =
                 model.Extrusion.Instances;
@@ -602,6 +619,163 @@ namespace CG3D
             gl.Vertex(end.X, end.Y, end.Z);
         }
 
+        private void DrawTexturedModel(PolyhedronModel model)
+        {
+            ReadOnlySpan<PolyhedronInstance> instances =
+                model.Extrusion.Instances;
+
+            ReadOnlySpan<Vector2> vertices =
+                model.Polygon.Vertices;
+
+            int instanceCount = instances.Length;
+            int vertexCount = vertices.Length;
+
+            if (instanceCount == 0 || vertexCount < 3)
+                return;
+
+            ApplyMaterial(model.Material);
+
+            // Настраиваем режим отображения.
+            gl.PolygonMode(
+                OpenGL.GL_FRONT_AND_BACK,
+                showWireframe ? OpenGL.GL_LINE : OpenGL.GL_FILL);
+
+            gl.Enable(OpenGL.GL_TEXTURE_2D);
+            texture.Bind(gl);
+
+            // Торцевые грани.
+            DrawTexturedEndFace(model, 0, reverse: true);
+
+            if (instanceCount > 1)
+                DrawTexturedEndFace(
+                    model, instanceCount - 1, reverse: false);
+
+            // Боковые грани.
+            for (int i = 0; i < instanceCount - 1; i++)
+            {
+                for (int j = 0; j < vertexCount; j++)
+                {
+                    int nextVertex = (j + 1) % vertexCount;
+
+                    Vector3 v0 = model.GetWorldVertex(i, j);
+                    Vector3 v1 = model.GetWorldVertex(i, nextVertex);
+                    Vector3 v2 = model.GetWorldVertex(i + 1, nextVertex);
+                    Vector3 v3 = model.GetWorldVertex(i + 1, j);
+
+                    Vector3 normal = Vector3.Normalize(
+                        Vector3.Cross(v1 - v0, v3 - v0));
+
+                    float texU0 = (float)j / vertexCount;
+                    float texU1 = (float)(j + 1) / vertexCount;
+
+                    float texV0 = (float)i / (instanceCount - 1);
+                    float texV1 = (float)(i + 1) / (instanceCount - 1);
+
+                    gl.Begin(OpenGL.GL_QUADS);
+
+                    gl.Normal(normal.X, normal.Y, normal.Z);
+
+                    gl.TexCoord(texU0, texV0);
+                    gl.Vertex(v0.X, v0.Y, v0.Z);
+
+                    gl.TexCoord(texU1, texV0);
+                    gl.Vertex(v1.X, v1.Y, v1.Z);
+
+                    gl.TexCoord(texU1, texV1);
+                    gl.Vertex(v2.X, v2.Y, v2.Z);
+
+                    gl.TexCoord(texU0, texV1);
+                    gl.Vertex(v3.X, v3.Y, v3.Z);
+
+                    gl.End();
+                }
+            }
+
+            gl.BindTexture(OpenGL.GL_TEXTURE_2D, 0);
+            gl.Disable(OpenGL.GL_TEXTURE_2D);
+
+            gl.PolygonMode(
+                OpenGL.GL_FRONT_AND_BACK,
+                OpenGL.GL_FILL);
+
+            // Нормали отображаем независимо от текстуры.
+            if (showNormals)
+                DrawModelNormals(model);
+        }
+
+        private void DrawTexturedEndFace(
+            PolyhedronModel model,
+            int instanceIndex,
+            bool reverse)
+        {
+            ReadOnlySpan<Vector2> vertices = model.Polygon.Vertices;
+
+            Vector3 normal = model.Extrusion.Instances[instanceIndex].Normal;
+
+            if (reverse)
+                normal = -normal;
+
+            Vector2 min = vertices[0];
+            Vector2 max = vertices[0];
+
+            for (int i = 1; i < vertices.Length; i++)
+            {
+                min = Vector2.Min(min, vertices[i]);
+                max = Vector2.Max(max, vertices[i]);
+            }
+
+            Vector2 size = max - min;
+
+            gl.Begin(OpenGL.GL_TRIANGLE_FAN);
+
+            gl.Normal(normal.X, normal.Y, normal.Z);
+
+            Vector3 center = model.Extrusion.Instances[instanceIndex].Offset;
+
+            gl.TexCoord(
+                (model.Polygon.Center.X - min.X) / size.X,
+                (model.Polygon.Center.Y - min.Y) / size.Y);
+
+            gl.Vertex(center.X, center.Y, center.Z);
+
+            if (reverse)
+            {
+                for (int i = vertices.Length - 1; i >= 0; i--)
+                    DrawTexturedFaceVertex(model, instanceIndex, i, min, size);
+            }
+            else
+            {
+                for (int i = 0; i < vertices.Length; i++)
+                    DrawTexturedFaceVertex(model, instanceIndex, i, min, size);
+            }
+
+            int firstIndex = reverse ? vertices.Length - 1 : 0;
+
+            DrawTexturedFaceVertex(
+                model, instanceIndex, firstIndex, min, size);
+
+            gl.End();
+        }
+
+        private void DrawTexturedFaceVertex(
+            PolyhedronModel model,
+            int instanceIndex,
+            int vertexIndex,
+            Vector2 min,
+            Vector2 size)
+        {
+            Vector2 vertex2D = model.Polygon.Vertices[vertexIndex];
+
+            Vector2 uv = new(
+                (vertex2D.X - min.X) / size.X,
+                (vertex2D.Y - min.Y) / size.Y);
+
+            Vector3 vertex3D =
+                model.GetWorldVertex(instanceIndex, vertexIndex);
+
+            gl.TexCoord(uv.X, uv.Y);
+            gl.Vertex(vertex3D.X, vertex3D.Y, vertex3D.Z);
+        }
         private void DrawFaceVertexNormals(
             PolyhedronModel model,
             int instanceIndex,
